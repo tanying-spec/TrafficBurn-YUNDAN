@@ -9,9 +9,9 @@ fmt() { awk -v n="$1" 'BEGIN { if(n>=1073741824) printf "%.2f GiB",n/1073741824;
 running() { [ -s "$PIDFILE" ] && kill -0 "$(cat "$PIDFILE" 2>/dev/null)" 2>/dev/null; }
 cleanup() { rm -f "$PIDFILE"; }
 download_range() {
-  url="$1"; start="$2"; end="$3"; size="$4"
+  url="$1"; start="$2"; end="$3"; size="$4"; limit="$5"
   case "$url" in *\?*) sep='&';; *) sep='?';; esac
-  curl -fL --silent --show-error --connect-timeout 15 --max-time 45 \
+  curl -fL --silent --show-error --connect-timeout 15 --max-time 45 --limit-rate "${limit}M" \
     -A 'TrafficBurn-YUNDAN/1.0' --range "$start-$end" "${url}${sep}tb=$(date +%s)$$" | head -c "$size" | wc -c
 }
 worker() {
@@ -20,17 +20,14 @@ worker() {
   oldifs="$IFS"; IFS='|'
   for url in $sources; do
     [ "$total" -lt "$target" ] || break
-    offset=0
     while [ "$total" -lt "$target" ]; do
       remain=$((target-total)); size=$CHUNK; [ "$remain" -lt "$size" ] && size=$remain
-      end=$((offset+size-1)); echo "使用来源：$url（已消耗 $(fmt "$total")/$(fmt "$target")）"
-      got=$(download_range "$url" "$offset" "$end" "$size" 2>&1) || got=0
+      end=$((size-1)); echo "使用来源：$url（已消耗 $(fmt "$total")/$(fmt "$target")）"
+      got=$(download_range "$url" 0 "$end" "$size" "$limit" 2>&1) || got=0
       case "$got" in *[!0-9]*|'') got=0;; esac
       [ "$got" -gt 0 ] || break
-      total=$((total+got)); offset=$((offset+got));
+      total=$((total+got))
       [ "$got" -lt "$size" ] && break
-      delay=$(awk -v n="$size" -v l="$limit" 'BEGIN{if(l>0) printf "%.3f",n/(l*1048576); else print 0}')
-      [ "$delay" = 0 ] || sleep "$delay"
     done
   done
   IFS="$oldifs"; echo "完成：$(fmt "$total")，用时 $(( $(date +%s)-start_time ))s"
