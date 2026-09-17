@@ -10,9 +10,9 @@ running() { [ -s "$PIDFILE" ] && kill -0 "$(cat "$PIDFILE" 2>/dev/null)" 2>/dev/
 cleanup() { rm -f "$PIDFILE"; }
 download_range() {
   url="$1"; start="$2"; end="$3"; size="$4"; limit="$5"
-  case "$url" in *\?*) sep='&';; *) sep='?';; esac
   curl -fL --silent --show-error --connect-timeout 15 --max-time 45 --limit-rate "${limit}M" \
-    -A 'TrafficBurn-YUNDAN/1.0' --range "$start-$end" "${url}${sep}tb=$(date +%s)$$" | head -c "$size" | wc -c
+    -H 'Cache-Control: no-cache' -A 'TrafficBurn-YUNDAN/1.0' \
+    --range "$start-$end" "$url" | head -c "$size" | wc -c
 }
 worker() {
   target="$1"; limit="$2"; total=0; start_time=$(date +%s)
