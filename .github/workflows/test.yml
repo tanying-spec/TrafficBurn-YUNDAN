@@ -8,5 +8,5 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: sudo apt-get update && sudo apt-get install -y shellcheck
-      - run: sh -n install.sh && shellcheck -s sh install.sh
+      - run: sh -n install.sh traffic_burn_openwrt.sh && shellcheck -s sh install.sh traffic_burn_openwrt.sh
       - run: python3 -m unittest discover -s tests -v

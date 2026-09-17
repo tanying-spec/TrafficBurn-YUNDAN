@@ -34,6 +34,9 @@ class Tests(unittest.TestCase):
     def test_installer_hash_matches(self):
         import hashlib
         digest = hashlib.sha256((ROOT / 'traffic_burn.py').read_bytes()).hexdigest()
-        self.assertIn('PROGRAM_SHA256=' + digest, (ROOT / 'install.sh').read_text(encoding='utf-8'))
+        installer = (ROOT / 'install.sh').read_text(encoding='utf-8')
+        self.assertIn('PROGRAM_SHA256=' + digest, installer)
+        openwrt = hashlib.sha256((ROOT / 'traffic_burn_openwrt.sh').read_bytes()).hexdigest()
+        self.assertIn('OPENWRT_SHA256=' + openwrt, installer)
 
 if __name__ == '__main__': unittest.main()
