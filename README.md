@@ -12,9 +12,9 @@ tb
 也可直接运行：
 
 ```sh
-python3 traffic_burn.py --bytes $((5*1024*1024*1024)) --source cloudflare --limit-mib 20
+python3 traffic_burn.py --bytes $((5*1024*1024*1024)) --source auto --limit-mib 20
 ```
 
-来源：Cloudflare Speed Test 精确端点；Windows 11 官方 ISO 大文件源。Windows 源每次运行时尝试从微软官方页面提取当天的临时签名链接，不缓存过期地址；解析失败自动回退到 Cloudflare 精确源。公开源可能限速或临时不可用，程序不会无限重试。
+默认使用公开测速来源池：Cloudflare、Hetzner NBG、OVH，遇到 403、超时或连接失败自动切换。大文件读完后继续循环，直到达到指定额度。Windows 源每次运行时尝试从微软官方页面提取当天的临时签名链接，不缓存过期地址；解析失败进入测速来源池。
 
 安全限制：单次 10 MiB–100 GiB，默认 20 MiB/s，最大 100 MiB/s，单线程；Ctrl+C 可停止。不要用于压测、攻击或消耗不属于你的站点资源。
