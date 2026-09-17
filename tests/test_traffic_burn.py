@@ -16,7 +16,20 @@ class Tests(unittest.TestCase):
         with patch.object(t, 'microsoft_iso_url', side_effect=RuntimeError('no link')), \
              patch.object(t, 'download', side_effect=lambda url, amount, limit: (calls.append(url) or amount, 1)):
             t.run(1024, 'windows', 1)
-        self.assertIn('speed.cloudflare.com', calls[0])
+        self.assertIn('proof.ovh.net', calls[0])
+
+    def test_auto_pool_has_multiple_providers_and_ovh_first(self):
+        pool = t.source_pool('auto', 123)
+        self.assertEqual(pool[0][0], 'OVH 欧洲')
+        self.assertGreaterEqual(len(pool), 10)
+        names = ' '.join(name for name, _ in pool)
+        for provider in ('OVH', 'Vultr', 'Hetzner', 'Linode', 'Cloudflare'):
+            self.assertIn(provider, names)
+
+    def test_cloudflare_mode_is_cloudflare_only(self):
+        self.assertEqual(t.source_pool('cloudflare', 123), [
+            ('Cloudflare', 'https://speed.cloudflare.com/__down?bytes=123')
+        ])
 
     def test_installer_hash_matches(self):
         import hashlib

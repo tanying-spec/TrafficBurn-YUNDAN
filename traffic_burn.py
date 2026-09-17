@@ -2,11 +2,20 @@
 import argparse, os, re, signal, sys, time, urllib.parse, urllib.request
 
 CHUNK = 1024 * 1024
-SOURCES = {
-    'Cloudflare 精确测速': 'https://speed.cloudflare.com/__down?bytes={bytes}',
-    'Hetzner NBG 测速': 'https://nbg1-speed.hetzner.com/1GB.bin',
-    'OVH 测速': 'https://proof.ovh.net/files/1Gb.dat',
-}
+SOURCES = (
+    ('OVH 欧洲', 'https://proof.ovh.net/files/1Gb.dat'),
+    ('Vultr 阿姆斯特丹', 'https://ams-nl-ping.vultr.com/vultr.com.1000MB.bin'),
+    ('Vultr 法兰克福', 'https://fra-de-ping.vultr.com/vultr.com.1000MB.bin'),
+    ('Vultr 伦敦', 'https://lon-gb-ping.vultr.com/vultr.com.1000MB.bin'),
+    ('Hetzner FSN', 'https://fsn1-speed.hetzner.com/1GB.bin'),
+    ('Hetzner HEL', 'https://hel1-speed.hetzner.com/1GB.bin'),
+    ('Vultr 东京', 'https://hnd-jp-ping.vultr.com/vultr.com.1000MB.bin'),
+    ('Vultr 新加坡', 'https://sgp-ping.vultr.com/vultr.com.1000MB.bin'),
+    ('Linode 东京', 'https://speedtest.tokyo2.linode.com/100MB-tokyo2.bin'),
+    ('Linode 新加坡', 'https://speedtest.singapore.linode.com/100MB-singapore.bin'),
+    ('Vultr 洛杉矶', 'https://lax-ca-us-ping.vultr.com/vultr.com.1000MB.bin'),
+    ('Cloudflare', 'https://speed.cloudflare.com/__down?bytes={bytes}'),
+)
 MICROSOFT_PAGES = (
     'https://www.microsoft.com/software-download/windows11',
     'https://www.microsoft.com/en-us/software-download/windows11',
@@ -36,7 +45,7 @@ def ask_amount():
     raise ValueError('无效选择。')
 
 def cloudflare_url(amount):
-    return SOURCES['Cloudflare 精确测速'].format(bytes=amount)
+    return dict(SOURCES)['Cloudflare'].format(bytes=amount)
 
 def microsoft_iso_url():
     """Resolve a currently signed Windows ISO URL; never cache the result."""
@@ -73,12 +82,9 @@ def download(url, target, limit_mbps=20):
     return total, time.monotonic() - started
 
 def source_pool(source, amount):
-    public = [
-        ('Cloudflare', cloudflare_url(amount)),
-        ('Hetzner NBG', SOURCES['Hetzner NBG 测速']),
-        ('OVH', SOURCES['OVH 测速']),
-    ]
-    if source == 'cloudflare': return public[:1]
+    public = [(name, cloudflare_url(amount) if name == 'Cloudflare' else url)
+              for name, url in SOURCES]
+    if source == 'cloudflare': return [public[-1]]
     if source == 'windows':
         try: return [('Windows 11 ISO', microsoft_iso_url())] + public
         except Exception as e: print(f'Windows 来源不可用：{e}\n切换到公开测速来源池。', file=sys.stderr)
@@ -116,7 +122,7 @@ def menu():
         return
     if choice != '1': raise ValueError('无效选择。')
     target = ask_amount()
-    print('1) 自动来源池（推荐：Cloudflare → Hetzner → OVH）')
+    print('1) 自动来源池（推荐：OVH → Vultr → Hetzner → Linode → Cloudflare）')
     print('2) Windows 11 官方 ISO（失败后进入自动来源池）')
     source = input('选择来源 [1-2，默认 1]: ').strip() or '1'
     if source not in ('1', '2'): raise ValueError('无效来源。')
