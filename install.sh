@@ -1,7 +1,7 @@
 #!/bin/sh
 set -eu
-VERSION=1.0.2
-PROGRAM_SHA256=1e3215b3e47372c5aadb8cb2aab3c5d2ba4b6fe0b56534aca2be950ee6132e4b
+VERSION=1.0.3
+PROGRAM_SHA256=5039ba3514fc418108d0c9391a40d03e964cf7b4d6b5ec83546e0188cf90b074
 DIR=/opt/traffic-burn-yundan
 BIN=/usr/local/sbin/traffic-burn
 ALIAS=/usr/local/sbin/tb

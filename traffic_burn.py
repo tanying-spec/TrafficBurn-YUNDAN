@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import argparse, os, re, signal, sys, time, urllib.parse, urllib.request
+import argparse, os, re, signal, subprocess, sys, time, urllib.parse, urllib.request
 
 CHUNK = 1024 * 1024
 SOURCES = (
@@ -21,10 +21,58 @@ MICROSOFT_PAGES = (
     'https://www.microsoft.com/en-us/software-download/windows11',
 )
 STOP = False
+STATE_DIR = '/run' if os.access('/run', os.W_OK) else '/tmp'
+LOG_DIR = '/var/log' if os.access('/var/log', os.W_OK) else '/tmp'
+PID_FILE = os.path.join(STATE_DIR, 'traffic-burn-yundan.pid')
+LOG_FILE = os.path.join(LOG_DIR, 'traffic-burn-yundan.log')
 
 def stop(*_):
     global STOP
     STOP = True
+
+def active_pid():
+    try:
+        pid = int(open(PID_FILE, encoding='ascii').read().strip())
+        os.kill(pid, 0)
+        return pid
+    except (OSError, ValueError):
+        try: os.unlink(PID_FILE)
+        except OSError: pass
+        return None
+
+def start_background(target, source, limit):
+    pid = active_pid()
+    if pid: raise RuntimeError(f'已有任务正在运行（PID {pid}）。')
+    command = [sys.executable, '-u', os.path.abspath(__file__), '--bytes', str(target),
+               '--source', source, '--limit-mib', str(limit), '--worker']
+    with open(LOG_FILE, 'a', encoding='utf-8') as log:
+        log.write(f'\n--- {time.strftime("%Y-%m-%d %H:%M:%S")} 新任务 {fmt(target)} ---\n')
+        log.flush()
+        process = subprocess.Popen(command, stdin=subprocess.DEVNULL, stdout=log,
+                                   stderr=subprocess.STDOUT, start_new_session=True,
+                                   close_fds=True)
+    with open(PID_FILE, 'w', encoding='ascii') as f: f.write(str(process.pid))
+    print(f'后台任务已启动（PID {process.pid}）。现在可以退出 SSH。')
+    print(f'再次运行 tb 可查看进度或停止任务。日志：{LOG_FILE}')
+
+def show_status():
+    pid = active_pid()
+    print(f'运行状态：{"正在运行，PID " + str(pid) if pid else "当前没有任务"}')
+    try:
+        with open(LOG_FILE, encoding='utf-8', errors='replace') as f:
+            lines = f.readlines()[-15:]
+        if lines:
+            print('最近日志：')
+            print(''.join(lines), end='' if lines[-1].endswith('\n') else '\n')
+    except OSError:
+        print('暂无日志。')
+
+def stop_background():
+    pid = active_pid()
+    if not pid:
+        print('当前没有运行中的任务。'); return
+    os.kill(pid, signal.SIGTERM)
+    print(f'已向任务 PID {pid} 发送停止信号。')
 
 def fmt(n):
     units = ('B', 'KiB', 'MiB', 'GiB', 'TiB')
@@ -114,11 +162,13 @@ def run(target, source, limit):
     print(f'完成：{fmt(total)}，用时 {time.monotonic()-started:.1f}s' if not STOP else f'已停止：{fmt(total)}')
 
 def menu():
-    print('TrafficBurn-YUNDAN\n1) 消耗指定下载流量\n2) 查看说明\n0) 退出')
-    choice = input('请选择 [0-2]: ').strip()
+    print('TrafficBurn-YUNDAN\n1) 后台消耗指定下载流量\n2) 查看任务状态和日志\n3) 停止后台任务\n4) 查看说明\n0) 退出')
+    choice = input('请选择 [0-4]: ').strip()
     if choice == '0': return
-    if choice == '2':
-        print('仅用于你控制或明确允许测试的网络；默认单线程、20 MiB/s、单次最多100 GiB。')
+    if choice == '2': show_status(); return
+    if choice == '3': stop_background(); return
+    if choice == '4':
+        print('任务在后台运行，退出 SSH 不会中断；默认单线程、20 MiB/s、单次最多100 GiB。')
         return
     if choice != '1': raise ValueError('无效选择。')
     target = ask_amount()
@@ -130,18 +180,26 @@ def menu():
     if not 0.1 <= limit <= 100: raise ValueError('速度必须在 0.1-100 MiB/s。')
     print(f'目标 {fmt(target)}，单线程，限速 {limit:g} MiB/s。确认开始？[y/N]')
     if input().strip().lower() != 'y': return
-    run(target, 'auto' if source == '1' else 'windows', limit)
+    start_background(target, 'auto' if source == '1' else 'windows', limit)
 
 def main():
     signal.signal(signal.SIGINT, stop)
+    signal.signal(signal.SIGTERM, stop)
     p = argparse.ArgumentParser()
     p.add_argument('--bytes', type=int)
     p.add_argument('--source', choices=('auto', 'cloudflare', 'windows'), default='auto')
     p.add_argument('--limit-mib', type=float, default=20)
+    p.add_argument('--worker', action='store_true', help=argparse.SUPPRESS)
     args = p.parse_args()
     if args.bytes:
         if not 10 * 1024**2 <= args.bytes <= 100 * 1024**3: raise SystemExit('额度必须在10 MiB-100 GiB。')
-        run(args.bytes, args.source, args.limit_mib)
+        try:
+            run(args.bytes, args.source, args.limit_mib)
+        finally:
+            if args.worker:
+                try:
+                    if active_pid() == os.getpid(): os.unlink(PID_FILE)
+                except OSError: pass
     else: menu()
 
 if __name__ == '__main__':

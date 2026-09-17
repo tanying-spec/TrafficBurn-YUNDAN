@@ -1,6 +1,6 @@
 # TrafficBurn-YUNDAN
 
-用于你自己控制或明确允许测试的服务器，按指定额度产生下载流量。默认单线程、限速、达到额度自动停止，不接受任意第三方 URL。
+用于你自己控制或明确允许测试的服务器，按指定额度产生下载流量。默认后台运行，退出 SSH 不会中断；任务单线程、限速、达到额度自动停止，不接受任意第三方 URL。
 
 ## 安装
 
@@ -8,6 +8,8 @@
 curl -fsSL https://raw.githubusercontent.com/tanying-spec/TrafficBurn-YUNDAN/main/install.sh -o /tmp/traffic-burn-install.sh && sh /tmp/traffic-burn-install.sh
 tb
 ```
+
+在菜单中可以启动后台任务、查看进度日志和停止任务。
 
 也可直接运行：
 
