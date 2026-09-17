@@ -41,15 +41,15 @@ stop_task() { if running; then kill "$(cat "$PIDFILE")"; echo '已发送停止�
 start_task() {
   running && { echo "已有任务运行，PID $(cat "$PIDFILE")"; return; }
   target=$((1*1024*1024*1024)); echo '1) 1 GiB  2) 5 GiB  3) 10 GiB  4) 20 GiB  5) 50 GiB  6) 自定义'
-  read -r -p '选择流量额度 [1-6]: ' n
-  case "$n" in 1) target=$((1*1024*1024*1024));;2) target=$((5*1024*1024*1024));;3) target=$((10*1024*1024*1024));;4) target=$((20*1024*1024*1024));;5) target=$((50*1024*1024*1024));;6) read -r -p '输入 GiB 数量 [0.01-100]: ' g; target=$(awk -v g="$g" 'BEGIN{if(g<0.01||g>100) exit 1; printf "%.0f",g*1073741824}') || { echo '额度必须在 0.01-100 GiB'; return; };;*) echo '无效选择'; return;; esac
-  read -r -p '最大速度 MiB/s [默认20]: ' limit; limit=${limit:-20}
+  printf '选择流量额度 [1-6]: '; read -r n
+  case "$n" in 1) target=$((1*1024*1024*1024));;2) target=$((5*1024*1024*1024));;3) target=$((10*1024*1024*1024));;4) target=$((20*1024*1024*1024));;5) target=$((50*1024*1024*1024));;6) printf '输入 GiB 数量 [0.01-100]: '; read -r g; target=$(awk -v g="$g" 'BEGIN{if(g<0.01||g>100) exit 1; printf "%.0f",g*1073741824}') || { echo '额度必须在 0.01-100 GiB'; return; };;*) echo '无效选择'; return;; esac
+  printf '最大速度 MiB/s [默认20]: '; read -r limit; limit=${limit:-20}
   case "$limit" in *[!0-9.]*|'') echo '速度格式无效'; return;; esac
   awk -v l="$limit" 'BEGIN{exit !(l>=0.1&&l<=100)}' || { echo '速度必须在 0.1-100 MiB/s'; return; }
-  read -r -p '确认后台开始？[y/N] ' ok; [ "$ok" = y ] || return
+  printf '确认后台开始？[y/N] '; read -r ok; [ "$ok" = y ] || return
   mkdir -p "$(dirname "$LOGFILE")"; nohup sh "$0" --worker "$target" "$limit" >>"$LOGFILE" 2>&1 </dev/null & echo $! >"$PIDFILE"
   echo "后台任务已启动，PID $(cat "$PIDFILE")，现在可以退出 SSH。"
 }
 if [ "${1:-}" = --worker ]; then worker "$2" "$3"; exit; fi
-echo 'TrafficBurn-YUNDAN (OpenWrt/Kwrt)'; echo '1) 后台消耗指定下载流量'; echo '2) 查看状态和日志'; echo '3) 停止任务'; echo '0) 退出'; read -r -p '请选择 [0-3]: ' c
+echo 'TrafficBurn-YUNDAN (OpenWrt/Kwrt)'; echo '1) 后台消耗指定下载流量'; echo '2) 查看状态和日志'; echo '3) 停止任务'; echo '0) 退出'; printf '请选择 [0-3]: '; read -r c
 case "$c" in 1) start_task;;2) status;;3) stop_task;; esac
