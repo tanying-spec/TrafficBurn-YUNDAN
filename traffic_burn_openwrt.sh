@@ -23,7 +23,7 @@ worker() {
     while [ "$total" -lt "$target" ]; do
       remain=$((target-total)); size=$CHUNK; [ "$remain" -lt "$size" ] && size=$remain
       end=$((size-1)); echo "使用来源：$url（已消耗 $(fmt "$total")/$(fmt "$target")）"
-      got=$(download_range "$url" 0 "$end" "$size" "$limit" 2>&1) || got=0
+      got=$(download_range "$url" 0 "$end" "$size" "$limit") || got=0
       case "$got" in *[!0-9]*|'') got=0;; esac
       [ "$got" -gt 0 ] || break
       total=$((total+got))
