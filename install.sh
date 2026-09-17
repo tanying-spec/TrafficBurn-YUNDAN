@@ -6,6 +6,7 @@ OPENWRT_SHA256=26f80dcc2fe6ebd86130092871764703ef85208a4da45325e0f2e7eaced43be8
 DIR=/opt/traffic-burn-yundan
 BIN=/usr/local/sbin/traffic-burn
 ALIAS=/usr/local/sbin/tb
+OPENWRT_ALIAS=/usr/bin/tb
 URL="https://raw.githubusercontent.com/tanying-spec/TrafficBurn-YUNDAN/v$VERSION/traffic_burn.py"
 MODE=python
 if ! command -v python3 >/dev/null 2>&1 && command -v opkg >/dev/null 2>&1; then MODE=openwrt
@@ -42,4 +43,8 @@ EOF
 fi
 chmod 755 "$BIN"
 [ -e "$ALIAS" ] || ln -s "$BIN" "$ALIAS"
+if [ "$MODE" = openwrt ]; then
+  [ ! -e "$OPENWRT_ALIAS" ] || [ "$(readlink -f "$OPENWRT_ALIAS" 2>/dev/null || true)" = "$BIN" ] || { echo "$OPENWRT_ALIAS 已被占用" >&2; exit 1; }
+  [ -e "$OPENWRT_ALIAS" ] || ln -s "$BIN" "$OPENWRT_ALIAS"
+fi
 echo '安装完成，运行 tb 或 traffic-burn。'
